@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Guess the word</title>
+</head>
+
+<body>
+  <audio id="effect" src="/assets/correct.mp3"></audio>
+<p id="scoreboard">SCORE: 0<br>HIGHEST SCORE: 0<br>HEALTH: 5</p>
+<h1 id="word">random</h1>
+<p id="def">Definition</p>
+<input type="text" id="answer">
+<div id="container">
+  <input type="button" id="submit" value="Submit" />
+  <input type="button" id="reload" value="Change Word"  onclick="reset()">
+</div>
+</body>
+<style type="text/css" media="all">
+  body{
+    background-color: #212121;
+    margin: 0px;
+    justify-content: center;
+    display: flex;
+    flex-direction: column;
+  }
+  #word{
+    color:white;
+    font-family: monospace;
+    text-align: center;
+    letter-spacing: 3px;
+    transition: all .5s ease;
+  }
+  #def{
+    color: lightblue;
+    text-align: center;
+    font-family: monospace;
+    padding: 10px;
+  }
+  #scoreboard{
+    color: white;
+    background-color: #04AA6D;
+    margin: 0px;
+    padding: 5px;
+    font-family: monospace;
+    font-weight: bold;
+  }
+  #answer{
+    margin: auto;
+    background-color: transparent;
+    outline: 0;
+    border: 0px;
+    color: white;
+    font-family: Arial, Helvetica: ;, sans-serif;
+    border-bottom: 2px solid white;
+    align-self: center;
+    text-align: center;
+    padding: 5px;
+  }
+  #container{
+    display: flex;
+    flex-direction: row;
+    align-self: center;
+    margin: 10px;
+  }
+  #container > input[type=button]{
+    background-color: #04AA6D;
+    margin: 5px;
+    padding: 10px;
+    border-radius: 0px;
+    border: 1px solid black;
+    color: white;
+    transition: all .5s ease;
+  }
+  #container > input[type=button]:active{
+    transform: scale(.5);
+  }
+</style>
+<script type="text/javascript" charset="utf-8">
+
+var score = 0
+var health = 5
+const hiddenLetter = "_"
+const ran = "https://random-word-api.herokuapp.com/word"
+const genWord = "https://random-word-api.vercel.app/api?words=1"
+const genTrivia = "https://opentdb.com/api.php?amount=1"
+const triviaCat = "https://opentdb.com/api_category.php"
+
+var rand = function(max) {
+  return Math.floor(Math.random() * max);
+};
+
+window.addEventListener("DOMContentLoaded",function(){
+  if (localStorage.getItem("hs")==null){
+    localStorage.setItem("hs",0)
+  } else {
+    console.log("hs found")
+  }
+  updateScore()
+  displayWord(genWord)
+})
+
+function updateScore(){
+  const sb = document.getElementById("scoreboard")
+  if (health!=0){
+    sb.innerHTML = `SCORE: ${score}<br>HIGHEST SCORE: ${localStorage.getItem("hs")}<br>HEALTH: ${health}`
+  } else {
+    if (score>parseInt(localStorage.getItem("hs"))){
+      localStorage.setItem("hs",score)
+      sb.innerHTML = `SCORE: ${score}<br>HIGHEST SCORE: ${localStorage.getItem("hs")}<br>HEALTH: ${health}`
+    }
+    score=0
+    health=5
+    updateScore()
+    displayWord(genWord)
+  }
+  
+}
+
+  function displayWord(url) {
+    const word = document.getElementById("word")
+    const submit = document.getElementById("submit")
+    const answer = document.getElementById("answer")
+    const sb=document.getElementById("scoreboard")
+    const sound = document.getElementById("effect")
+          return fetch(url)
+              .then((response) => { 
+                return response.json().then((data) => {
+                  word.innerHTML=""
+                  const ran1 = rand(data[0].length)
+                  const ran2 = rand(data[0].length)
+                  const ran3 = rand(data[0].length)
+                  var text = ""
+                  for (x in data[0]){
+                    if (x!=ran1&&x!=ran2&&x!=ran3){
+                      text+=hiddenLetter
+                    } else {
+                      text+=`${data[0][x]}`
+                    }
+                  }
+                  word.innerText = text
+                  displayDef(`https://api.dictionaryapi.dev/api/v2/entries/en/${data[0]}`)
+                  console.log(data[0])
+               submit.onclick=()=>{
+                 const tr = answer.value.trim()
+                 const trimed = tr.toLowerCase()
+                 if (trimed!=data[0]){
+                   health--
+                   if (health==0){
+                     word.innerText=data[0]
+                   }
+                   word.style.color="red"
+                   word.style.scale=1.5
+                   setTimeout(function(){
+                     word.style.color="white"
+                     word.style.scale=1
+                     updateScore()
+                   },500)
+                 } else {
+                   sound.play()
+                   word.innerText=data[0]
+                   word.style.color="lime"
+                   word.style.scale=1.5
+                   score++
+                   updateScore()
+                   setTimeout(function(){
+                     word.style.color="white"
+                     word.style.scale=1
+                     displayWord(genWord)
+                   },500)
+                   
+                   
+                 } 
+                 
+                 answer.value=""
+               }
+                return data[0];
+            }).catch((err) => {
+                console.log(err);
+            }) 
+        });
+      }
+      
+    async function getDefinition(word) {
+  let response = await axios.get(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`, {
+    headers: {
+      "accept": "application/json"
+    }
+  });
+  document.getElementById('def').innerHTML = response.data[0].meanings[0].definitions[0].definition;
+}
+      
+   function displayDef(url) {
+    const def = document.getElementById("def")
+          return fetch(url)
+              .then((response) => { 
+                return response.json().then((data) => {
+                  def.innerHTML=""
+                 if ("message" in data){
+                   def.innerText="couldn't find definition please reload or answer without definition/s"
+                 } else {
+                   const loc = data[0].meanings[0].definitions
+                   for (item in loc){
+                     def.innerHTML+=`def-${item}:<i> ${loc[item].definition}</i> <br><br>`
+                   }
+                 }
+                
+                
+                return data[0];
+            }).catch((err) => {
+                console.log(err);
+            }) 
+        });
+      }
+      
+  function reset(){
+    const button = document.getElementById("reload")
+    displayWord(genWord)
+    button.style.visibility="hidden"
+    setTimeout(function(){
+      button.style.visibility="visible"
+    },10000)
+  }
+</script>
+<script type="module" charset="utf-8">
+  
+</script>
+
+</html>
